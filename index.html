@@ -1,0 +1,72 @@
+﻿<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SIGRO | Gestão de Riscos</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/script.js" defer></script>
+</head>
+<body>
+  <header><h1>SIGRO</h1><p>Sistema Integrado de Gestão de Riscos Ocupacionais</p></header>
+  <nav aria-label="Navegação principal">
+    <button data-pagina="dashboard" class="active">Dashboard</button>
+    <button data-pagina="inspecao">APR + FALAAD</button>
+    <button data-pagina="acoes">Ações e Evidências</button>
+    <button data-pagina="mapa">Mapa de Calor</button>
+    <button data-pagina="registros">Registros</button>
+  </nav>
+  <main>
+    <section id="dashboard">
+      <h2>Dashboard de Segurança</h2>
+      <div id="indicadores" class="cards"></div>
+      <div class="panel"><h3>Últimos registros</h3><div id="ultimos"></div></div>
+    </section>
+    <section id="inspecao" hidden>
+      <h2>Inspeção de Segurança | APR + FALAAD</h2>
+      <form id="formInspecao">
+        <label for="nome">Nome do colaborador</label><input id="nome" required>
+        <label for="area">Área de trabalho</label><select id="area" required></select>
+        <label for="atividade">Atividade do dia</label><select id="atividade" required></select>
+        <div id="apr" class="item"></div>
+        <h3>Verificação FALAAD</h3><p>Marque e descreva as condições que apresentam riscos.</p>
+        <div id="falaad"></div>
+        <label for="probabilidade">Probabilidade do risco</label><select id="probabilidade"></select>
+        <label for="severidade">Severidade</label><select id="severidade"></select>
+        <label for="extras">Riscos adicionais identificados</label><textarea id="extras"></textarea>
+        <button class="primary">Registrar inspeção</button>
+      </form>
+    </section>
+    <section id="acoes" hidden>
+      <h2>Ações e Evidências</h2>
+      <form id="formAcesso">
+        <h3>Acesso do responsável</h3>
+        <label for="codigo">Código de acesso</label><input id="codigo" type="password" required>
+        <small>Acesso demonstrativo: 1234, 5678 ou 9012.</small>
+        <button class="primary">Liberar acesso</button>
+      </form>
+      <div id="areaResponsavel" hidden>
+        <div class="panel"><p>Responsável: <strong id="usuario"></strong></p><button id="sair" class="primary">Encerrar acesso</button></div>
+        <form id="formAcao">
+          <h3>Registrar ação corretiva ou preventiva</h3>
+          <label for="acaoInspecao">Inspeção relacionada</label><select id="acaoInspecao" required></select>
+          <label for="descricao">Risco ou situação identificada</label><textarea id="descricao" required></textarea>
+          <label for="medida">Medida corretiva ou preventiva</label><textarea id="medida" required></textarea>
+          <label for="responsavel">Responsável pela ação</label><input id="responsavel" required>
+          <label for="prazo">Prazo de conclusão</label><input id="prazo" type="date">
+          <label for="evidencia">Evidência (foto ou PDF)</label><input id="evidencia" type="file" accept="image/*,.pdf">
+          <button class="primary">Registrar ação</button>
+        </form>
+        <div class="panel"><h3>Ações registradas</h3><div id="listaAcoes"></div></div>
+      </div>
+    </section>
+    <section id="mapa" hidden>
+      <h2>Mapa de Calor de Riscos</h2>
+      <div class="panel"><p>Probabilidade × severidade: verde 1–4, amarelo 5–9, laranja 10–14 e vermelho 15–25.</p><div id="matriz" class="heatmap"></div></div>
+      <div id="listaMapa" class="panel"></div>
+    </section>
+    <section id="registros" hidden><h2>Registros de Inspeções</h2><div id="listaInspecoes" class="panel"></div></section>
+  </main>
+  <div id="notificacao" role="status" hidden></div>
+</body>
+</html>
