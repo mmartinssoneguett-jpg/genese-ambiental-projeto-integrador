@@ -16,6 +16,7 @@ function carregar(chave) {
   catch { return []; }
 }
 let inspecoes = carregar('sigro_inspecoes'), acoes = carregar('sigro_acoes');
+const quaseAcidentes = carregar('sigro_quase_acidentes');
 function notificar(texto) {
   $('notificacao').textContent = texto;
   $('notificacao').hidden = false;
@@ -36,6 +37,7 @@ const item = conteudo => `<div class="item">${conteudo}</div>`;
 function atualizar() {
   const indicadores = {
     'Inspeções realizadas': inspecoes.length,
+    'Quase acidentes relatados': quaseAcidentes.length,
     'Riscos identificados': inspecoes.reduce((total, i) => total + i.riscosAPR.length + Object.keys(i.falaad || {}).length + (i.extras?.trim() ? 1 : 0), 0),
     'Ações pendentes': acoes.filter(a => a.status === 'Pendente').length,
     'Ações concluídas': acoes.filter(a => a.status === 'Concluído').length
@@ -67,7 +69,45 @@ function atualizar() {
       <button type="button" class="danger" data-remover="${escapar(i.id)}" aria-label="Remover inspeção de ${escapar(i.nome)}">Remover</button>
     </div>
   `)).join('') || 'Nenhuma inspeção registrada.';
+  $('listaQuaseAcidentes').innerHTML = quaseAcidentes.slice().reverse().map(r => item(`
+    <strong>${escapar(r.local)}</strong>
+    <p>Data: ${escapar(r.data.split('-').reverse().join('/'))}${r.hora ? ` às ${escapar(r.hora)}` : ''}</p>
+    <p>Relatado por: ${escapar(r.nome || 'Não informado')}</p>
+    <p class="texto-relato"><strong>O que aconteceu:</strong> ${escapar(r.descricao)}</p>
+    <p class="texto-relato"><strong>Possíveis consequências:</strong> ${escapar(r.consequencia)}</p>
+    <p class="texto-relato"><strong>Medidas / prevenção:</strong> ${escapar(r.medidas || 'Não informado')}</p>
+  `)).join('') || 'Nenhum relato de quase acidente registrado.';
 }
+const dataLocalHoje = () => {
+  const hoje = new Date();
+  return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
+};
+$('relatoData').value = $('relatoData').max = dataLocalHoje();
+$('formQuaseAcidente').addEventListener('submit', e => {
+  e.preventDefault();
+  const form = e.target;
+  $('relatoData').max = dataLocalHoje();
+  if (!form.reportValidity()) return;
+  const relato = {
+    id: Date.now(), nome: $('relatoNome').value.trim(), data: $('relatoData').value,
+    hora: $('relatoHora').value, local: $('relatoLocal').value.trim(),
+    descricao: $('relatoDescricao').value.trim(), consequencia: $('relatoConsequencia').value.trim(),
+    medidas: $('relatoMedidas').value.trim()
+  };
+  if (!relato.local || !relato.descricao || !relato.consequencia) return notificar('Preencha o local, a descrição e as possíveis consequências.');
+  quaseAcidentes.push(relato);
+  try {
+    localStorage.setItem('sigro_quase_acidentes', JSON.stringify(quaseAcidentes));
+  } catch {
+    quaseAcidentes.pop();
+    notificar('Não foi possível salvar o relato. Verifique o armazenamento do navegador.');
+    return;
+  }
+  form.reset();
+  $('relatoData').value = dataLocalHoje();
+  atualizar();
+  notificar('Relato de quase acidente registrado!');
+});
 function evidenciaHTML(acao) {
   const url = acao.evidencia || '';
   if (/^data:image\/(png|jpeg|gif|webp);base64,/i.test(url)) return `<img class="evidencia" src="${escapar(url)}" alt="${escapar(acao.nomeArquivo || 'Evidência da ação')}">`;

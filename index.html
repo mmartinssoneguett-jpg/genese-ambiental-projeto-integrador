@@ -15,6 +15,7 @@
     <nav aria-label="Navegação principal">
       <button data-pagina="dashboard" class="active">Dashboard</button>
       <button data-pagina="inspecao">APR + FALAAD</button>
+      <button data-pagina="quaseAcidentes">Quase acidente</button>
       <button data-pagina="acoes">Ações e Evidências</button>
       <button data-pagina="mapa">Mapa de Calor</button>
       <button data-pagina="registros">Registros</button>
@@ -47,9 +48,38 @@
           ><select id="severidade"></select>
           <label for="extras">Riscos adicionais identificados</label
           ><textarea id="extras"></textarea>
-          <button id="salvarInspecao" type="submit" class="primary">Registrar inspeção</button>
-          <button id="cancelarEdicao" type="button" class="secondary" hidden>Cancelar edição</button>
+          <button id="salvarInspecao" type="submit" class="primary">
+            Registrar inspeção
+          </button>
+          <button id="cancelarEdicao" type="button" class="secondary" hidden>
+            Cancelar edição
+          </button>
         </form>
+      </section>
+      <section id="quaseAcidentes" hidden>
+        <h2>Relato de Quase Acidente</h2>
+        <form id="formQuaseAcidente">
+          <p>Relate uma situação que poderia ter causado um acidente, mas não resultou em lesão.</p>
+          <label for="relatoNome">Nome de quem relata (opcional)</label>
+          <input id="relatoNome" maxlength="120" />
+          <label for="relatoData">Data da ocorrência</label>
+          <input id="relatoData" type="date" required />
+          <label for="relatoHora">Horário (opcional)</label>
+          <input id="relatoHora" type="time" />
+          <label for="relatoLocal">Local / setor</label>
+          <input id="relatoLocal" placeholder="Onde aconteceu?" maxlength="200" required />
+          <label for="relatoDescricao">O que aconteceu?</label>
+          <textarea id="relatoDescricao" placeholder="Descreva a situação e as pessoas ou equipamentos envolvidos." maxlength="4000" required></textarea>
+          <label for="relatoConsequencia">O que poderia ter acontecido?</label>
+          <textarea id="relatoConsequencia" placeholder="Descreva as possíveis consequências." maxlength="4000" required></textarea>
+          <label for="relatoMedidas">Medidas tomadas ou sugestões de prevenção (opcional)</label>
+          <textarea id="relatoMedidas" maxlength="4000"></textarea>
+          <button type="submit" class="primary">Registrar relato</button>
+        </form>
+        <div class="panel">
+          <h3>Relatos registrados</h3>
+          <div id="listaQuaseAcidentes"></div>
+        </div>
       </section>
       <section id="acoes" hidden>
         <h2>Ações e Evidências</h2>
