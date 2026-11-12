@@ -1,5 +1,5 @@
 ﻿const $ = id => document.getElementById(id);
-const escapar = valor => String(valor ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const escapar = valor => String(valor ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const atividades = {
   campo: ['Trabalho a céu aberto', ['Exposição solar e calor', 'Animais peçonhentos', 'Terreno irregular', 'Condições climáticas adversas']],
   altura: ['Trabalho em altura', ['Queda de altura', 'Queda de ferramentas', 'Ausência de proteção coletiva']],
@@ -8,8 +8,9 @@ const atividades = {
   carga: ['Movimentação de cargas', ['Queda de materiais', 'Atropelamento', 'Sobrecarga física']]
 };
 const direcoes = ['À Frente', 'Atrás', 'Laterais', 'Acima', 'Abaixo', 'Disposição / Equipamentos e atividade'];
-const codigos = {'1234': 'Responsável 1', '5678': 'Responsável 2', '9012': 'Responsável 3'};
+const codigos = { '1234': 'Responsável 1', '5678': 'Responsável 2', '9012': 'Responsável 3' };
 let usuario = null, timer;
+let inspecaoEmEdicao = null;
 function carregar(chave) {
   try { const dados = JSON.parse(localStorage.getItem(chave)); return Array.isArray(dados) ? dados : []; }
   catch { return []; }
@@ -61,6 +62,10 @@ function atualizar() {
     <p>Riscos APR: ${escapar(i.riscosAPR.join(', '))}</p>
     ${Object.entries(i.falaad || {}).map(([tipo, texto]) => `<p>${escapar(tipo)}: ${escapar(texto)}</p>`).join('')}
     <p>Riscos adicionais: ${escapar(i.extras || 'Nenhum')}</p>
+    <div class="acoes-inspecao">
+      <button type="button" class="primary" data-editar="${escapar(i.id)}" aria-label="Editar inspeção de ${escapar(i.nome)}">Editar</button>
+      <button type="button" class="danger" data-remover="${escapar(i.id)}" aria-label="Remover inspeção de ${escapar(i.nome)}">Remover</button>
+    </div>
   `)).join('') || 'Nenhuma inspeção registrada.';
 }
 function evidenciaHTML(acao) {
@@ -78,7 +83,7 @@ document.querySelector('nav').addEventListener('click', e => {
 });
 $('area').innerHTML = opcoes(['Produção', 'Manutenção', 'Logística', 'Administrativo', 'Campo'].map(a => [a, a]));
 $('atividade').innerHTML = opcoes(Object.entries(atividades).map(([id, a]) => [id, a[0]]));
-for (const [id, nomes] of Object.entries({probabilidade: ['Rara', 'Pouco provável', 'Possível', 'Provável', 'Muito provável'], severidade: ['Leve', 'Moderada', 'Grave', 'Muito grave', 'Crítica']})) {
+for (const [id, nomes] of Object.entries({ probabilidade: ['Rara', 'Pouco provável', 'Possível', 'Provável', 'Muito provável'], severidade: ['Leve', 'Moderada', 'Grave', 'Muito grave', 'Crítica'] })) {
   $(id).innerHTML = nomes.map((nome, i) => `<option value="${i + 1}">${i + 1} — ${nome}</option>`).join('');
 }
 $('atividade').addEventListener('change', () => {
@@ -91,19 +96,76 @@ $('falaad').addEventListener('change', e => {
   campo.hidden = campo.disabled = !e.target.checked;
   campo.required = e.target.checked;
 });
+function limparFormularioInspecao() {
+  inspecaoEmEdicao = null;
+  $('formInspecao').reset();
+  $('apr').textContent = '';
+  $('salvarInspecao').textContent = 'Registrar inspeção';
+  $('cancelarEdicao').hidden = true;
+  document.querySelector('#inspecao h2').textContent = 'Inspeção de Segurança | APR + FALAAD';
+  document.querySelectorAll('#falaad textarea').forEach(c => { c.hidden = c.disabled = true; c.required = false; });
+}
+$('cancelarEdicao').addEventListener('click', () => {
+  limparFormularioInspecao();
+  document.querySelector('nav [data-pagina="registros"]').click();
+});
+$('listaInspecoes').addEventListener('click', e => {
+  const botao = e.target.closest('[data-editar], [data-remover]');
+  if (!botao) return;
+  const inspecao = inspecoes.find(i => String(i.id) === (botao.dataset.editar ?? botao.dataset.remover));
+  if (!inspecao) return;
+  if (botao.hasAttribute('data-remover')) {
+    const vinculadas = acoes.filter(a => a.inspecao === inspecao.id).length;
+    if (!confirm(`Remover a inspeção de "${inspecao.nome}"?${vinculadas ? ` As ${vinculadas} ação(ões) vinculada(s) também serão removidas.` : ''} Esta operação não pode ser desfeita.`)) return;
+    const anteriores = inspecoes, acoesAnteriores = acoes;
+    inspecoes = inspecoes.filter(i => i.id !== inspecao.id);
+    acoes = acoes.filter(a => a.inspecao !== inspecao.id);
+    if (!salvar()) { inspecoes = anteriores; acoes = acoesAnteriores; salvar(); return; }
+    if (inspecaoEmEdicao === inspecao.id) limparFormularioInspecao();
+    atualizar();
+    notificar('Inspeção removida!');
+    return;
+  }
+  limparFormularioInspecao();
+  inspecaoEmEdicao = inspecao.id;
+  for (const campo of ['nome', 'area', 'atividade', 'probabilidade', 'severidade', 'extras']) {
+    $(campo).value = inspecao[campo] ?? '';
+  }
+  $('atividade').dispatchEvent(new Event('change'));
+  document.querySelectorAll('[data-direcao]').forEach(c => {
+    const texto = inspecao.falaad?.[direcoes[c.dataset.direcao]];
+    c.checked = texto !== undefined;
+    c.dispatchEvent(new Event('change', { bubbles: true }));
+    $(`direcao-${c.dataset.direcao}`).value = texto ?? '';
+  });
+  $('salvarInspecao').textContent = 'Salvar alterações';
+  $('cancelarEdicao').hidden = false;
+  document.querySelector('#inspecao h2').textContent = 'Editar inspeção | APR + FALAAD';
+  document.querySelector('nav [data-pagina="inspecao"]').click();
+  $('nome').focus();
+});
 $('formInspecao').addEventListener('submit', e => {
   e.preventDefault();
   const atividade = $('atividade').value;
   const falaad = {};
   document.querySelectorAll('[data-direcao]:checked').forEach(c => falaad[direcoes[c.dataset.direcao]] = $(`direcao-${c.dataset.direcao}`).value.trim());
-  const inspecao = {id: Date.now(), nome: $('nome').value.trim(), area: $('area').value, atividade, riscosAPR: atividades[atividade][1], falaad, probabilidade: Number($('probabilidade').value), severidade: Number($('severidade').value), extras: $('extras').value.trim(), data: new Date().toLocaleDateString('pt-BR')};
+  const inspecao = { id: Date.now(), nome: $('nome').value.trim(), area: $('area').value, atividade, riscosAPR: atividades[atividade][1], falaad, probabilidade: Number($('probabilidade').value), severidade: Number($('severidade').value), extras: $('extras').value.trim(), data: new Date().toLocaleDateString('pt-BR') };
   if (!inspecao.nome) return notificar('Informe o nome do colaborador.');
+  if (inspecaoEmEdicao !== null) {
+    const indice = inspecoes.findIndex(i => i.id === inspecaoEmEdicao);
+    if (indice === -1) return notificar('Inspeção não encontrada.');
+    const anterior = inspecoes[indice];
+    inspecoes[indice] = { ...anterior, ...inspecao, id: anterior.id, data: anterior.data };
+    if (!salvar()) { inspecoes[indice] = anterior; return; }
+    limparFormularioInspecao();
+    document.querySelector('nav [data-pagina="registros"]').click();
+    notificar('Inspeção atualizada!');
+    return;
+  }
   inspecoes.push(inspecao);
-  acoes.push({id: inspecao.id + 1, inspecao: inspecao.id, descricao: `Inspeção: ${inspecao.nome} — ${inspecao.area}`, medida: 'Avaliar e registrar a medida necessária.', status: 'Pendente', registradoPor: 'Sistema'});
+  acoes.push({ id: inspecao.id + 1, inspecao: inspecao.id, descricao: `Inspeção: ${inspecao.nome} — ${inspecao.area}`, medida: 'Avaliar e registrar a medida necessária.', status: 'Pendente', registradoPor: 'Sistema' });
   if (!salvar()) { inspecoes.pop(); acoes.pop(); return; }
-  e.target.reset();
-  $('apr').textContent = '';
-  document.querySelectorAll('#falaad textarea').forEach(c => { c.hidden = c.disabled = true; c.required = false; });
+  limparFormularioInspecao();
   atualizar(); notificar('Inspeção registrada!');
 });
 $('formAcesso').addEventListener('submit', e => {
@@ -124,7 +186,7 @@ $('formAcao').addEventListener('submit', async e => {
   e.preventDefault();
   if (!usuario) return;
   const form = e.target, botao = form.querySelector('button');
-  const acao = {id: Date.now(), inspecao: Number($('acaoInspecao').value), descricao: $('descricao').value.trim(), medida: $('medida').value.trim(), responsavel: $('responsavel').value.trim(), prazo: $('prazo').value, registradoPor: usuario};
+  const acao = { id: Date.now(), inspecao: Number($('acaoInspecao').value), descricao: $('descricao').value.trim(), medida: $('medida').value.trim(), responsavel: $('responsavel').value.trim(), prazo: $('prazo').value, registradoPor: usuario };
   if (!inspecoes.some(i => i.id === acao.inspecao) || !acao.descricao || !acao.medida || !acao.responsavel) return notificar('Preencha os campos obrigatórios.');
   const arquivo = $('evidencia').files[0];
   if (arquivo && (!/^(image\/(png|jpeg|gif|webp)|application\/pdf)$/.test(arquivo.type) || arquivo.size > 2 * 1024 * 1024)) return notificar('Envie PNG, JPEG, GIF, WebP ou PDF de até 2 MB.');
@@ -148,7 +210,7 @@ $('listaAcoes').addEventListener('click', e => {
   if (!salvar()) { acao.status = 'Pendente'; return; }
   atualizar(); notificar('Ação concluída!');
 });
-$('matriz').innerHTML = Array.from({length: 25}, (_, i) => {
+$('matriz').innerHTML = Array.from({ length: 25 }, (_, i) => {
   const nivel = (Math.floor(i / 5) + 1) * (i % 5 + 1);
   return `<div class="heat ${cor(nivel)}">${nivel}</div>`;
 }).join('');
